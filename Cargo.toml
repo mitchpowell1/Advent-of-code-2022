@@ -39,7 +39,14 @@ path = "src/day8.rs"
 name = "day9"
 path = "src/day9.rs"
 
+[[bin]]
+name = "day10"
+path = "src/day10.rs"
+
 ### END BINS ###
+[dependencies]
+rustc-hash = "1.1.0"
+tinyvec = "1.6.0"
 
 [profile.release]
 strip = true

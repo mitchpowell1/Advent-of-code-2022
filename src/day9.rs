@@ -1,9 +1,13 @@
 use std::fs;
+use std::ops::AddAssign;
 use std::time::Instant;
 use rustc_hash::FxHashSet;
 
 const FILE_PATH: &str = "inputs/day9_input.txt";
-type Position = (i32, i32);
+const ROPE_LENGTH: usize = 10;
+
+#[derive(Eq, Hash, PartialEq, Copy, Clone)]
+struct Position { x: i32, y: i32 }
 
 #[derive(Debug)]
 enum Direction {
@@ -13,17 +17,23 @@ enum Direction {
     Right(u32)
 }
 
+impl AddAssign for Position {
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
+    }
+
+}
+
 impl Direction {
     fn from_str(str: &str) -> Self {
         use Direction::*;
-        let mut split = str.split_whitespace();
-        let dir_str = split.next().unwrap();
-        let count: u32 = split.next().unwrap().parse().unwrap();
+        let (dir_str, count) = str.split_once(' ').unwrap();
         match dir_str {
-            "U" => Up(count),
-            "D" => Down(count),
-            "L" => Left(count),
-            "R" => Right(count),
+            "U" => Up(count.parse().unwrap()),
+            "D" => Down(count.parse().unwrap()),
+            "L" => Left(count.parse().unwrap()),
+            "R" => Right(count.parse().unwrap()),
             _ => panic!("Received an unexpected direction {str}"),
         }
     }
@@ -31,19 +41,19 @@ impl Direction {
     fn get_offset(&self) -> Position {
         use Direction::*;
         match *self {
-            Up(_) => (0, 1),
-            Down(_) => (0, -1),
-            Left(_) => (-1, 0),
-            Right(_) => (1, 0),
+            Up(_) => Position { x: 0, y: 1 },
+            Down(_) => Position { x: 0, y: -1 },
+            Left(_) => Position { x: -1, y: 0 },
+            Right(_) => Position { x: 1, y: 0 },
         }
     }
 
     fn get_count(&self) -> u32 {
         use Direction::*;
         match *self {
-            Up(count) => count,
-            Down(count) => count,
-            Left(count) => count,
+            Up(count) |
+            Down(count) |
+            Left(count) |
             Right(count) => count,
         }
     }
@@ -55,57 +65,53 @@ fn main() {
     let parsed = contents
         .lines()
         .map(Direction::from_str);
-    let p1 = solve(parsed.clone(), 2);
-    let p2 = solve(parsed, 10);
+        
+    let (p1, p2) = solve(parsed);
 
     println!("Elapsed: {:?}", start.elapsed());
     println!("D9P1: {p1:?}");
     println!("D9P2: {p2:?}");
 }
 
-fn get_new_tail_position(head: Position, tail: Position) -> Position {
-    let x_offset = head.0 - tail.0;
-    let y_offset = head.1 - tail.1;
+fn follow(head: &Position, mut tail: &mut Position) -> bool {
+    let x_offset = head.x - tail.x;
+    let y_offset = head.y - tail.y;
 
-    // Tail does not move if it is within one row and column of x
-    if x_offset.abs() <= 1 && y_offset.abs() <= 1 {
-        tail
-    } else {
-        (tail.0 + x_offset.signum(), tail.1 + y_offset.signum())
+    if x_offset.abs() > 1 || y_offset.abs() > 1 {
+        *tail += Position {x: x_offset.signum(), y: y_offset.signum()};
+        return true;
     }
+    false
 }
 
-fn solve(directions: impl Iterator<Item = Direction>, rope_length: usize) -> usize {
-    let mut rope_positions: Vec<Position> = vec![(0,0); rope_length];
-    let mut next_positions = rope_positions.clone();
-    let mut tail_positions: FxHashSet<Position> = FxHashSet::default();
-    tail_positions.insert(*rope_positions.last().unwrap());
+fn solve(directions: impl Iterator<Item = Direction>) -> (usize, usize) {
+    let mut rope_positions: [Position; ROPE_LENGTH] = [Position {x: 0, y: 0}; ROPE_LENGTH];
+    let tail = ROPE_LENGTH - 1;
 
-    for direction in directions {
-        let (dx, dy) = direction.get_offset();
+    let (mut second_positions, mut tail_positions) = (FxHashSet::default(), FxHashSet::default());
+    tail_positions.insert(rope_positions[tail]);
+    second_positions.insert(rope_positions[1]);
+
+    directions.for_each(|direction| {
         let count = direction.get_count();
 
         for _ in 0..count {
-            next_positions[0].0 += dx;
-            next_positions[0].1 += dy;
-            let mut changed = 0;
-            for (i, knot) in rope_positions[1..].iter().enumerate() {
-                let next = get_new_tail_position(next_positions[i], *knot);
-                if next == *knot {
+            rope_positions[0] += direction.get_offset();
+            for i in 1..ROPE_LENGTH {
+                let (heads, tails) = rope_positions.split_at_mut(i);
+                let modified = follow(heads.last().unwrap(), &mut tails[0]);
+                if !modified {
                     break;
                 }
-                changed += 1;
-                next_positions[i + 1] = next;
-            }
-
-            for (i, knot) in next_positions[0..=changed].iter().enumerate() {
-                rope_positions[i] = *knot;
-            }
-            if changed == rope_positions.len() - 1 {
-                tail_positions.insert(*rope_positions.last().unwrap());
+                if i == 1 {
+                    second_positions.insert(rope_positions[1]);
+                }
+                if i == tail {
+                    tail_positions.insert(rope_positions[tail]);
+                }
             }
         }
-    }
+    });
 
-    tail_positions.len()
+    (second_positions.len(), tail_positions.len())
 }

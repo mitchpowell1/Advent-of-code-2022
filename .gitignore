@@ -1,2 +1,4 @@
 target/
+# Keep test input files, but remove the actual inputs
+inputs/day*_input.txt
 Cargo.lock
