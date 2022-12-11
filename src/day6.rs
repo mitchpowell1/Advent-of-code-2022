@@ -22,7 +22,6 @@ fn main() {
     let p1 = evaluate(&contents, 4);
     let p2 = evaluate(&contents, 14);
     println!("Elapsed: {:?}", start.elapsed());
-    //println!("Elapsed: {:?}", start.elapsed());
     println!("D6P1: {p1:?}");
     println!("D6P1: {p2:?}");
 }

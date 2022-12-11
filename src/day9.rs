@@ -73,7 +73,7 @@ fn main() {
     println!("D9P2: {p2:?}");
 }
 
-fn follow(head: &Position, mut tail: &mut Position) -> bool {
+fn follow(head: &Position, tail: &mut Position) -> bool {
     let x_offset = head.x - tail.x;
     let y_offset = head.y - tail.y;
 

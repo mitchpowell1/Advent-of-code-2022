@@ -1,3 +1,5 @@
+#![feature(slice_concat_trait)]
+
 use std::fs;
 use std::time::Instant;
 
@@ -6,14 +8,14 @@ const PIXEL_WIDTH: usize = 40;
 const CYCLE_COUNT: usize = 240;
 
 #[derive(Debug)]
-enum Instruction { NOOP, ADDX(i32) }
+enum Instruction { Noop, Addx(i32) }
 
 impl Instruction {
     fn from_str(in_str: &str) -> Self {
         match in_str {
-            "noop" => Instruction::NOOP,
+            "noop" => Instruction::Noop,
             _ => {
-                Instruction::ADDX(in_str.split_whitespace().nth(1).unwrap().parse().unwrap())
+                Instruction::Addx(in_str.split_whitespace().nth(1).unwrap().parse().unwrap())
             }
         }
     }
@@ -26,13 +28,10 @@ fn main() {
     let (p1, p2) = process_instructions(parsed);
     println!("Elapsed: {:?}", start.elapsed());
     println!("D10P1: {p1:?}");
-    println!("D10P2:");
-    for chunk in p2.chunks(PIXEL_WIDTH) {
-        println!("{:?}", chunk.iter().collect::<String>());
-    }
+    println!("D10P2: {p2}");
 }
 
-fn process_instructions(instructions: impl Iterator<Item = Instruction>) -> (i32, [char; CYCLE_COUNT]) {
+fn process_instructions(instructions: impl Iterator<Item = Instruction>) -> (i32, String) {
     let mut cycle = 0;
     let mut x_reg: i32 = 1;
     let mut signal_sum = 0;
@@ -54,14 +53,23 @@ fn process_instructions(instructions: impl Iterator<Item = Instruction>) -> (i32
 
     for instruction in instructions {
         match instruction {
-            Instruction::NOOP => {
+            Instruction::Noop => {
                 consume_cycles(1, 0);
             },
-            Instruction::ADDX(v) => { 
+            Instruction::Addx(v) => { 
                 consume_cycles(2, v);
             }
         }
     }
 
-    (signal_sum, pixel_output)
+
+    let mut str = String::new();
+    for (i, c) in pixel_output.iter().enumerate() {
+        if  i % PIXEL_WIDTH == 0 {
+            str.push('\n');
+        }
+        str.push(*c);
+    }
+
+    (signal_sum, str)
 }

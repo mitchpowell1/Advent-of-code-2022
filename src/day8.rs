@@ -29,6 +29,7 @@ fn count_visible(trees: &Grid<u32>) -> (u32, u32) {
     let (width, height) = (trees[0].len(), trees.len());
     let (mut visible, mut max_scenic_score) = (0,0);
 
+    // TODO: Consider cached sweep technique to save time
     let can_see_edge = |r_range: RealRange, c_range: RealRange, tree: u32| {
         for r in r_range {
             for c in c_range {
