@@ -1,5 +1,6 @@
 use std::fs;
-use std::cmp::min;
+use std::thread;
+use std::sync::Arc;
 use std::time::Instant;
 use std::collections::VecDeque;
 use rustc_hash::FxHashSet;
@@ -35,9 +36,13 @@ fn main() {
     let t = Instant::now();
     let contents = fs::read_to_string(FILE_PATH).expect("Could not read input for day12");
     let (grid, start, end) = parse_input(&contents);
+    let arc1 = Arc::new(grid);
+    let arc2 = arc1.clone();
 
-    let p1 = calculate_min_path(&grid, start, 'E', true);
-    let p2 = min(p1, calculate_min_path(&grid, end, 'a', false));
+    let p2_handle = thread::spawn(move || calculate_min_path(&arc1, &end, 'a', false));
+
+    let p1 = calculate_min_path(&arc2, &start, 'E', true);
+    let p2 = p2_handle.join().expect("Panic occurred during p2");
 
     println!("Elapsed: {:?}", t.elapsed());
     println!("D12P1: {p1:?}");
@@ -52,11 +57,11 @@ fn get_elevation(ch: char) -> u8 {
     }
 }
 
-fn calculate_min_path(grid: &Grid<char>, start: Point, end_char: char, ascending: bool) -> u16 {
+fn calculate_min_path(grid: &Grid<char>, start: &Point, end_char: char, ascending: bool) -> u16 {
     let (width, height) = (grid[0].len(), grid.len());
     let mut visited: FxHashSet<Point> = FxHashSet::default();
     let mut to_visit: VecDeque<(Point, u16)> = VecDeque::new();
-    to_visit.push_front((start, 0));
+    to_visit.push_front((*start, 0));
 
     while let Some((current, steps)) = to_visit.pop_front() {
         visited.insert(current);

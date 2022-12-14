@@ -51,11 +51,20 @@ path = "src/day11.rs"
 name = "day12"
 path = "src/day12.rs"
 
+[[bin]]
+name = "day13"
+path = "src/day13.rs"
+
+[[bin]]
+name = "day14"
+path = "src/day14.rs"
+
 ### END BINS ###
 [dependencies]
 rustc-hash = "1.1.0"
 tinyvec = "1.6.0"
 num = "0.4.0"
+bitmaps = "3.2.0"
 
 [profile.release]
 strip = true
