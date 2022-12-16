@@ -153,15 +153,16 @@ fn main() {
     let start = Instant::now();
     let contents = fs::read_to_string(FILE_PATH).expect("Could not read input for day15");
     let sensors = parse_input(&contents);
-    let p1 = part_one(&sensors, SCAN_LINE, false).size();
-    let p2 = part_two(&sensors);
+    let mut scanned = Scanned::new();
+    part_one(&sensors, SCAN_LINE, false, &mut scanned);
+    let p1 = scanned.size();
+    let p2 = part_two(&sensors, &mut scanned);
     println!("Elapsed: {:?}", start.elapsed());
     println!("D15P1: {p1:?}");
     println!("D15P2: {p2:?}");
 }
 
-fn part_one(sensors: &Vec<Sensor>, line: i32, set_bounds: bool) -> Scanned {
-    let mut scanned = Scanned::new();
+fn part_one(sensors: &Vec<Sensor>, line: i32, set_bounds: bool, scanned: &mut Scanned) {
     for sensor in sensors {
         let Point(x, _) = sensor.location;
         let line_distance = sensor.location.get_distance(Point(x, line));
@@ -185,15 +186,15 @@ fn part_one(sensors: &Vec<Sensor>, line: i32, set_bounds: bool) -> Scanned {
             }
         }
     }
-    scanned
 }
 
-fn part_two(sensors: &Vec<Sensor>) -> u128 {
+fn part_two(sensors: &Vec<Sensor>, scanned: &mut Scanned) -> u128 {
     for line in 0..DISTRESS_UPPER_BOUND {
-        let res = part_one(sensors, line, true);
-        if res.size() == DISTRESS_UPPER_BOUND as usize {
+        scanned.ranges.clear();
+        part_one(sensors, line, true, scanned);
+        if scanned.size() == DISTRESS_UPPER_BOUND as usize {
             for x in 0..DISTRESS_UPPER_BOUND {
-                if !res.contains(x) {
+                if !scanned.contains(x) {
                     return ((x as u128 * 4_000_000 as u128) + line as u128) as u128;
                 }
             }
