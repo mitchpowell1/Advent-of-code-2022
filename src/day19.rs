@@ -1,7 +1,7 @@
 #![feature(int_roundings)]
 
 use std::fs;
-use std::cmp::max;
+use std::cmp::{max, min};
 use std::time::Instant;
 
 use lazy_static::lazy_static;
@@ -170,15 +170,11 @@ fn main() {
 
     println!("Elapsed: {:?}", start.elapsed());
     println!("D19P1: {p1:?}");
-    println!("D19P1: {p2:?}");
+    println!("D19P2: {p2:?}");
 }
 
 fn max_possible_geodes(t: i32, geode_bots: i32) -> i32 {
-    let mut max_geodes = 0;
-    for i in 0..=t {
-        max_geodes += (t - i) * (geode_bots + i)
-    }
-    max_geodes
+    (0..t).fold(0, |acc, i| acc + ((t - i) * (geode_bots + i)))
 }
 
 fn get_quality_level(bp: &Blueprint, time: i32) -> i32 {
@@ -193,16 +189,22 @@ fn get_quality_level(bp: &Blueprint, time: i32) -> i32 {
             return cached
         }
 
+        let max_possible = max_possible_geodes(time, state.geode_bots);
         if let Some(&cached) = max_geode_cache.get(&time) {
-            let max_possible = max_possible_geodes(time, state.geode_bots);
             if cached > max_possible {
-                cache.insert(cache_key, max_possible);
+                cache.insert(cache_key, 0);
                 return 0;
             }
         }
+        
+        if state.can_sustain_geode_bot_production(bp) {
+            cache.insert(cache_key, max_possible);
+            max_geode_cache.insert(time, max_possible);
+            return max_possible;
+        }
 
         // It is always better to build a geode robot if you can do so
-        if bp.geode_robot_cost.0 <= state.ore && bp.geode_robot_cost.1 <= state.obsidian {
+        if bp.geode_robot_cost.1 <= state.ore && bp.geode_robot_cost.1 <= state.obsidian {
             let mut next_state = state.iterate(1);
             next_state.ore -= bp.geode_robot_cost.0;
             next_state.obsidian -= bp.geode_robot_cost.1;
@@ -218,31 +220,52 @@ fn get_quality_level(bp: &Blueprint, time: i32) -> i32 {
             return res;
         } 
 
-        let mut res = helper(time - 1, state.iterate(1), cache, max_geode_cache, bp);
-
-        if !state.can_sustain_ore_production(bp) && bp.ore_robot_cost <= state.ore {
-            let mut next_state = state.iterate(1);
+        let mut res = 0;
+        if !state.can_sustain_ore_production(bp) {
+            let ticks = state.ticks_until_ore_bot(bp);
+            let mut next_state = state.iterate(ticks);
             next_state.ore -= bp.ore_robot_cost;
             next_state.ore_bots += 1;
-            res = max(res, helper(time - 1, next_state, cache, max_geode_cache, bp));
+            let next_time = time - ticks;
+            let generated = min(ticks, time) * state.geode_bots;
+            res = max(res, generated + helper(next_time, next_state, cache, max_geode_cache, bp));
         }
 
-        if !state.can_sustain_clay_production(bp) && bp.clay_robot_cost <= state.ore {
-            let mut next_state = state.iterate(1);
+        if !state.can_sustain_clay_production(bp) {
+            let ticks = state.ticks_until_clay_bot(bp);
+            let mut next_state = state.iterate(ticks);
+            let next_time = time - ticks;
             next_state.ore -= bp.clay_robot_cost;
             next_state.clay_bots += 1;
-            res = max(res, helper(time - 1, next_state, cache, max_geode_cache, bp));
+            let generated = min(ticks, time) * state.geode_bots;
+            res = max(res, generated + helper(next_time, next_state, cache, max_geode_cache, bp));
         }
 
-        if !state.can_sustain_obsidian_production(bp) && bp.obsidian_robot_cost.0 <= state.ore  && bp.obsidian_robot_cost.1 <= state.clay {
-            let mut next_state = state.iterate(1);
-            next_state.ore -= bp.obsidian_robot_cost.0;
-            next_state.clay -= bp.obsidian_robot_cost.1;
-            next_state.obsidian_bots += 1;
-            res = max(res, helper(time - 1, next_state, cache, max_geode_cache, bp));
+        if !state.can_sustain_obsidian_production(bp) {
+            if let Some(ticks) = state.ticks_until_obsidian_bot(bp) {
+                let mut next_state = state.iterate(ticks);
+                let (ore_cost, clay_cost) = bp.obsidian_robot_cost;
+                let next_time = time - ticks;
+                next_state.ore -= ore_cost;
+                next_state.clay -= clay_cost;
+                next_state.obsidian_bots += 1;
+                let generated = min(ticks, time) * state.geode_bots;
+                res = max(res, generated + helper(next_time, next_state, cache, max_geode_cache, bp));
+            }
         }
 
-        res += state.geode_bots;
+        if let Some(ticks) = state.ticks_until_geode_bot(bp) {
+            let mut next_state = state.iterate(ticks);
+            let (ore_cost, obsidian_cost) = bp.geode_robot_cost;
+            let next_time = time - ticks;
+            next_state.ore -= ore_cost;
+            next_state.obsidian -= obsidian_cost;
+            next_state.geode_bots += 1;
+            let generated = min(ticks, time) * state.geode_bots;
+            res = max(res, generated + helper(next_time, next_state, cache, max_geode_cache, bp));
+        }
+
+
         cache.insert(cache_key, res);
         if let Some(max_geodes) = max_geode_cache.get_mut(&time) {
             *max_geodes = max(*max_geodes, res);
