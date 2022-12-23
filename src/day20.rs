@@ -1,39 +1,36 @@
 use std::fs;
+use std::time::Instant;
 
-const FILE_PATH: &str = "inputs/day20_input_test.txt";
+const FILE_PATH: &str = "inputs/day20_input.txt";
+const SCALE_VAL: i64 = 811589153;
 
 fn main() {
+    let start = Instant::now();
     let contents = fs::read_to_string(FILE_PATH).expect("Could not read input for day20");
-    let parsed: Vec<i32> = contents.lines().map(|v| v.parse().unwrap() ).collect();
-    let p1 = part_one(&parsed);
+    let mut p1_inputs: Vec<(usize, i64)> = contents
+        .lines()
+        .enumerate()
+        .map(|(i,v)| (i, v.parse().unwrap()))
+        .collect();
+
+    let p1 = mix(&mut p1_inputs.clone(), 1, 1);
+    let p2 = mix(&mut p1_inputs, SCALE_VAL, 10);
+
+    println!("Elapsed: {:?}",start.elapsed());
     println!("D20P1: {p1:?}");
+    println!("D20P2: {p2:?}");
 }
 
-fn part_one(grove_coords: &Vec<i32>) -> i32 {
-    let mut cloned_coords = grove_coords.clone();
-
-    //println!("{cloned_coords:?}");
-    for &coord in grove_coords.iter() {
-        let current_index = cloned_coords.iter().position(|&v| v == coord).unwrap() as i32;
-        let mut next_index = if coord < 0 { current_index + (coord - 1) } else { current_index + coord };
-        let len = grove_coords.len() as i32;
-        next_index = ((next_index % len) + len) % len;
-
-        // if next_index < 0 {
-        //     next_index += grove_coords.len() as i32;
-        // }
-        //
-        // next_index = next_index % (cloned_coords.len() as i32);
-
-        cloned_coords.insert(next_index as usize, coord);
-        if next_index >= current_index {
-            cloned_coords.remove(current_index as usize);
-        } else {
-            cloned_coords.remove((current_index + 1) as usize);
+fn mix(grove_coords: &mut Vec<(usize, i64)>, scale: i64, num_mixes: i32) -> i64 {
+    let len = grove_coords.len();
+    for _ in 0..num_mixes {
+        for i in 0..grove_coords.len() {
+            let index = grove_coords.iter().position(|v| v.0 == i).unwrap();
+            let next_index = (index as i64 + &grove_coords[index].1 * scale).rem_euclid(len as i64 - 1);
+            let coord = grove_coords.remove(index);
+            grove_coords.insert(next_index as usize, coord);
         }
-        println!("{cloned_coords:?}");
     }
-
-    let zero_index = cloned_coords.iter().position(|&v| v == 0).unwrap(); 
-    [1000, 2000, 3000].into_iter().map(|i| cloned_coords[(zero_index + i) % grove_coords.len()]).sum()
+    let zero_index = grove_coords.iter().position(|&(_, val)| val == 0).unwrap();
+    [1000, 2000, 3000].iter().map(|&v| grove_coords[(zero_index + v as usize) % len].1 * scale).sum()
 }
