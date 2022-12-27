@@ -87,6 +87,22 @@ path = "src/day20.rs"
 name = "day22"
 path = "src/day22.rs"
 
+[[bin]]
+name = "day23"
+path = "src/day23.rs"
+
+[[bin]]
+name = "day21"
+path = "src/day21.rs"
+
+[[bin]]
+name = "day25"
+path = "src/day25.rs"
+
+[[bin]]
+name = "day24"
+path = "src/day24.rs"
+
 ### END BINS ###
 [dependencies]
 rustc-hash = "1.1.0"
